@@ -1088,6 +1088,7 @@ Clustered_DotPlot <- function(
                                    print_exp_quantiles = print_exp_quantiles,
                                    colors_use_idents = colors_use_idents,
                                    show_ident_colors = show_ident_colors,
+                                   simple_anno_size = simple_anno_size,
                                    x_lab_rotate = x_lab_rotate,
                                    plot_padding = plot_padding,
                                    flip = flip,
