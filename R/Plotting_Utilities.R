@@ -770,7 +770,8 @@ Clustered_DotPlot_Single_Group <- function(
   identity_colors <- colors_use_idents
   names(x = identity_colors) <- Identity
   identity_colors_list <- list(Identity = identity_colors)
-  
+  simple_anno_size <- simple_anno_size
+    
   # check grid color
   if (is.null(x = grid_color)) {
     grid_color <- NA
