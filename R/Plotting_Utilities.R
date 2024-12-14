@@ -29,12 +29,12 @@
 #'
 
 PC_Plotting <- function(
-  seurat_object,
-  dim_number
+    seurat_object,
+    dim_number
 ) {
   # Check Seurat
   Is_Seurat(seurat_object = seurat_object)
-
+  
   p1 <- PCHeatmap(seurat_object,
                   cells = 500,
                   dims = dim_number,
@@ -71,14 +71,14 @@ PC_Plotting <- function(
 #'
 
 Modify_VlnPlot <- function(
-  seurat_object,
-  features,
-  pt.size = NULL,
-  cols = NULL,
-  plot_margin = NULL,
-  raster = NULL,
-  add.noise = TRUE,
-  ...
+    seurat_object,
+    features,
+    pt.size = NULL,
+    cols = NULL,
+    plot_margin = NULL,
+    raster = NULL,
+    add.noise = TRUE,
+    ...
 ) {
   #remove the x-axis text and tick
   #plot_margin to adjust the white space between each plot.
@@ -119,23 +119,23 @@ Modify_VlnPlot <- function(
 #'
 
 kMeans_Elbow <- function(
-  data,
-  k_max = 15,
-  plot_title = "Sum of Squared Error (SSE) Plot",
-  cutoff_value = NULL
+    data,
+    k_max = 15,
+    plot_title = "Sum of Squared Error (SSE) Plot",
+    cutoff_value = NULL
 ) {
   # Calculate the within squares
   # code from @Ben https://stackoverflow.com/a/15376462/15568251
   wss <- (nrow(x = data)-1)*sum(apply(data,2,var))
   for (i in 2:k_max) wss[i] <- sum(kmeans(data,
                                           centers=i)$withinss)
-
+  
   # Reformat for ggplot2 plotting
   plot_data <- data.frame(wss) %>%
     rownames_to_column("k")
-
+  
   plot_data$k <- as.numeric(x = plot_data$k)
-
+  
   # Plot data
   plot <- ggplot(data = plot_data, mapping = aes(y = wss, x = .data[["k"]])) +
     geom_point() +
@@ -146,7 +146,7 @@ kMeans_Elbow <- function(
     ylab("Within groups sum of squares") +
     ggtitle(plot_title) +
     geom_vline(xintercept = cutoff_value, linetype = "dashed", color = "red")
-
+  
   return(plot)
 }
 
@@ -209,28 +209,28 @@ scCustomze_Split_FeatureScatter <- function(
 ) {
   # Check Seurat
   Is_Seurat(seurat_object = seurat_object)
-
+  
   # split.by present
   if (is.null(x = split.by)) {
     cli_abort(message = "No value supplied to {.code split.by}.")
   }
-
+  
   # Check split.by is valid
   if (split.by %in% colnames(seurat_object@meta.data) == FALSE) {
     cli_abort(message = c("The meta data variable: {.val {split.by}} could not be found in object@meta.data.",
                           "i" = "Please check the spelling and column names of meta.data slot.")
     )
   }
-
+  
   # Set column and row lengths
   split.by_length <- length(x = unique(x = seurat_object@meta.data[[split.by]]))
-
+  
   if (is.null(x = num_columns)) {
     num_columns <- split.by_length
   }
   # Calculate number of rows for selected number of columns
   num_rows <- ceiling(x = split.by_length/num_columns)
-
+  
   # Check column and row compatibility
   if (num_columns > split.by_length) {
     cli_abort(message = c("The number of columns specified is greater than the number of meta data variables.",
@@ -238,14 +238,14 @@ scCustomze_Split_FeatureScatter <- function(
                           "i" = "Please adjust {.code num_columns} to be less than or equal to {.field {split.by_length}}.")
     )
   }
-
+  
   # Check features are present
   possible_features <- c(rownames(x = seurat_object), colnames(x = seurat_object@meta.data))
   check_features <- setdiff(x = c(feature1, feature2), y = possible_features)
   if (length(x = check_features) > 0) {
     cli_abort(message = "The following feature(s) were not present in Seurat object: '{.field {check_features}}'")
   }
-
+  
   # Extract min/maxes of features
   data_to_plot <- FetchData(object = seurat_object, vars = c(feature1, feature2))
   cor_data_features <- c("nCount_RNA", "nFeature_RNA")
@@ -260,21 +260,21 @@ scCustomze_Split_FeatureScatter <- function(
     min_feature2 <- min(data_to_plot[, feature2])-0.05
     max_feature2 <- max(data_to_plot[, feature2])+0.05
   }
-
+  
   # Extract split.by list of values
   if (inherits(x = seurat_object@meta.data[, split.by], what = "factor")) {
     meta_sample_list <- as.character(x = levels(x = seurat_object@meta.data[, split.by]))
   } else {
     meta_sample_list <- as.character(x = unique(x = seurat_object@meta.data[, split.by]))
   }
-
+  
   # Extract cell names per meta data list of values
   cell_names <- lapply(meta_sample_list, function(x) {
     row.names(x = seurat_object@meta.data)[which(x = seurat_object@meta.data[, split.by] == x)]})
-
+  
   # raster check
   raster <- raster %||% (length(x = Cells(x = seurat_object)) > 2e5)
-
+  
   # Set uniform point size is pt.size = NULL (based on plot with most cells)
   if (is.null(x = pt.size)) {
     # cells per meta data
@@ -284,13 +284,13 @@ scCustomze_Split_FeatureScatter <- function(
     # modified version of the autopointsize function from Seurat
     pt.size <- AutoPointSize_scCustom(data = max_cells, raster = raster)
   }
-
+  
   # Add correlations if applicable
   cor_data_features <- c("nCount_RNA", "nFeature_RNA")
   if (feature1 %in% cor_data_features && feature2 %in% cor_data_features) {
     plot_cor <- TRUE
     cor_data <- FetchData(object = seurat_object, vars = c("nCount_RNA", "nFeature_RNA", split.by))
-
+    
     cor_values <- lapply(1:length(x = meta_sample_list), function(i) {
       cor_data_filtered <- cor_data %>%
         filter(.data[[split.by]] == meta_sample_list[[i]])
@@ -299,23 +299,23 @@ scCustomze_Split_FeatureScatter <- function(
   } else {
     plot_cor <- FALSE
   }
-
+  
   # Set colors
   group.by <- group.by %||% 'ident'
-
+  
   if (group.by == "ident") {
     group_by_length <- length(x = unique(x = seurat_object@active.ident))
   } else {
     group_by_length <- length(x = unique(x = seurat_object@meta.data[[group.by]]))
   }
-
+  
   if (is.null(x = colors_use)) {
     # set default plot colors
     if (is.null(x = colors_use)) {
       colors_use <- scCustomize_Palette(num_groups = group_by_length, ggplot_default_colors = ggplot_default_colors, color_seed = color_seed)
     }
   }
-
+  
   # Plots
   plots <- lapply(1:length(x = meta_sample_list), function(j) {
     plot <- FeatureScatter(seurat_object, feature1 = feature1, feature2 = feature2, cells = cell_names[[j]], group.by = group.by, cols = colors_use, pt.size = pt.size, raster = raster, raster.dpi = raster.dpi, ...) +
@@ -329,10 +329,10 @@ scCustomze_Split_FeatureScatter <- function(
       plot + ggtitle(paste(meta_sample_list[[j]]))
     }
   })
-
+  
   # Wrap Plots into single output
   plot_comb <- wrap_plots(plots, ncol = num_columns, nrow = num_rows) + plot_layout(guides = 'collect')
-
+  
   # Aspect ratio changes
   if (!is.null(x = aspect_ratio)) {
     if (!is.numeric(x = aspect_ratio)) {
@@ -340,7 +340,7 @@ scCustomze_Split_FeatureScatter <- function(
     }
     plot_comb <- plot_comb & theme(aspect.ratio = aspect_ratio)
   }
-
+  
   return(plot_comb)
 }
 
@@ -382,20 +382,20 @@ Overall_Prop_Plot <- function(
   if (!is.null(x = group.by) && group.by != "ident") {
     Idents(object = seurat_object) <- group.by
   }
-
+  
   # Get stats and filter
   all_stats <- Cluster_Stats_All_Samples(seurat_object = seurat_object)
-
+  
   fil_stats <- all_stats %>%
     select(all_of(c("Cluster", "Number", "Freq")))
-
+  
   num_clusters <- nrow(x = fil_stats) - 1
-
+  
   fil_stats <- fil_stats[1:num_clusters,]
-
+  
   # Create factor for prop plot based on that respects number of cells per cluster from Cluster_Stats_All_Samples
   fil_stats$Cluster <- factor(fil_stats$Cluster, levels = fil_stats$Cluster)
-
+  
   if (isFALSE(x = percent)) {
     plot <- ggplot(fil_stats, aes(x = .data[["Number"]], y = fct_rev(.data[["Cluster"]]), fill = .data[["Cluster"]])) +
       geom_col() +
@@ -413,7 +413,7 @@ Overall_Prop_Plot <- function(
       ylab(NULL) +
       NoLegend()
   }
-
+  
   if (isTRUE(x = prop_label)) {
     if (isFALSE(x = percent)) {
       plot <- plot + geom_text(data = fil_stats, aes(label = .data[["Number"]]), hjust = -0.1, fontface = "bold") + scale_x_continuous(expand = expansion(mult = c(0, .25)))
@@ -421,12 +421,12 @@ Overall_Prop_Plot <- function(
       plot <- plot + geom_text(data = fil_stats, aes(label = paste0(format(round(.data[["Freq"]], digits = 1)), "%"), hjust = -0.1, fontface = "bold")) + scale_x_continuous(expand = expansion(mult = c(0, .25)))
     }
   }
-
+  
   # mod x axis if needed
   if (isTRUE(x = x_axis_log)) {
     plot <- plot + scale_x_log10(expand = expansion(mult = c(0, .25)))
   }
-
+  
   return(plot)
 }
 
@@ -454,9 +454,9 @@ Figure_Plot <- function(
   # pull axis labels
   x_lab_reduc <- plot$labels$x
   y_lab_reduc <- plot$labels$y
-
+  
   plot <- plot & NoAxes()
-
+  
   axis_plot <- ggplot(data.frame(x= 100, y = 100), aes(x = .data[["x"]], y = .data[["y"]])) +
     geom_point() +
     xlim(c(0, 10)) + ylim(c(0, 10)) +
@@ -471,14 +471,14 @@ Figure_Plot <- function(
             arrow = arrow(angle = 15, length = unit(.5, "cm"), type = "closed")
           )
     )
-
+  
   figure_layout <- c(
     area(t = 1, l = 2, b = 11, r = 11),
     area(t = 10, l = 1, b = 12, r = 2))
-
+  
   plot_figure <- plot + axis_plot +
     plot_layout(design = figure_layout)
-
+  
   return(plot_figure)
 }
 
@@ -585,6 +585,7 @@ Clustered_DotPlot_Single_Group <- function(
     print_exp_quantiles = FALSE,
     colors_use_idents = NULL,
     show_ident_colors = TRUE,
+    simple_anno_size = unit(0.5, "cm"),
     x_lab_rotate = TRUE,
     plot_padding = NULL,
     flip = FALSE,
@@ -629,24 +630,24 @@ Clustered_DotPlot_Single_Group <- function(
       "----------------------------------------"
     ))
   }
-
+  
   # Check Seurat
   Is_Seurat(seurat_object = seurat_object)
-
+  
   # set legend
   if (isFALSE(x = show_ident_colors)) {
     show_ident_legend <- FALSE
   }
-
+  
   # set assay (if null set to active assay)
   assay <- assay %||% DefaultAssay(object = seurat_object)
-
+  
   # set padding
   if (!is.null(x = plot_padding)) {
     if (isTRUE(x = plot_padding)) {
       # Default extra padding
-          # 2 bottom: typically mirrors unpadded plot
-          # 15 left: usually enough to make rotated labels fit in plot window
+      # 2 bottom: typically mirrors unpadded plot
+      # 15 left: usually enough to make rotated labels fit in plot window
       padding <- unit(c(2, 15, 0, 0), "mm")
     } else {
       if (length(x = plot_padding) != 4) {
@@ -658,43 +659,43 @@ Clustered_DotPlot_Single_Group <- function(
       padding <- unit(plot_padding, "mm")
     }
   }
-
+  
   # Check acceptable fontface
   if (!row_label_fontface %in% c("plain", "bold", "italic", "oblique", "bold.italic")) {
     cli_abort(message = c("{.code row_label_face} {.val {row_label_face}} not recognized.",
                           "i" = "Must be one of {.val plain}, {.val bold}, {.val italic}, {.val olique}, or {.val bold.italic}."))
   }
-
+  
   # Check unique features
   features_unique <- unique(x = features)
-
+  
   if (length(x = features_unique) != length(x = features)) {
     cli_warn("Feature list contains duplicates, making unique.")
   }
-
+  
   # Check features and meta to determine which features present
   all_found_features <- Feature_PreCheck(object = seurat_object, features = features_unique, assay = assay)
-
+  
   # Check exp min/max set correctly
   if (!exp_color_min < exp_color_max) {
     cli_abort(message = c("Expression color min/max values are not compatible.",
                           "i" = "The value for {.code exp_color_min}: {.field {exp_color_min}} must be less than the value for {.code exp_color_max}: {.field {exp_color_max}}.")
     )
   }
-
+  
   # Get DotPlot data
   seurat_plot <- DotPlot(object = seurat_object, features = all_found_features, assay = assay, group.by = group.by, scale = TRUE, idents = idents, col.min = NULL, col.max = NULL)
-
+  
   data <- seurat_plot$data
-
+  
   # Get expression data
   exp_mat <- data %>%
     select(-any_of(c("pct.exp", "avg.exp"))) %>%
     pivot_wider(names_from = any_of("id"), values_from = any_of("avg.exp.scaled")) %>%
     as.data.frame()
-
+  
   row.names(x = exp_mat) <- exp_mat$features.plot
-
+  
   # Check NAs if idents
   if (!is.null(x = idents)) {
     # Find NA features and print warning
@@ -704,48 +705,48 @@ Clustered_DotPlot_Single_Group <- function(
                          "*" = "The following features were removed as there is no scaled expression present in subset (`idents`) of object provided:",
                          "i" = "{.field {glue_collapse_scCustom(input_string = excluded_features, and = TRUE)}}.")
     )
-
+    
     # Extract good features
     good_features <- rownames(x = exp_mat)
-
+    
     # Remove rows with NAs
     exp_mat <- exp_mat %>%
       filter(.data[["features.plot"]] %in% good_features)
   }
-
+  
   exp_mat <- exp_mat[,-1] %>%
     as.matrix()
-
+  
   # Get percent expressed data
   percent_mat <- data %>%
     select(-any_of(c("avg.exp", "avg.exp.scaled"))) %>%
     pivot_wider(names_from = any_of("id"), values_from = any_of("pct.exp")) %>%
     as.data.frame()
-
+  
   row.names(x = percent_mat) <- percent_mat$features.plot
-
+  
   # Subset dataframe for NAs if idents so that exp_mat and percent_mat match
   if (!is.null(x = idents)) {
     percent_mat <- percent_mat %>%
       filter(.data[["features.plot"]] %in% good_features)
   }
-
+  
   percent_mat <- percent_mat[,-1] %>%
     as.matrix()
-
+  
   # print quantiles
   if (isTRUE(x = print_exp_quantiles)) {
     cli_inform(message = "Quantiles of gene expression data are:")
     print(quantile(exp_mat, c(0.1, 0.5, 0.9, 0.99)))
   }
-
+  
   # Set default color palette based on number of levels being plotted
   if (is.null(x = group.by)) {
     group_by_length <- length(x = unique(x = seurat_object@active.ident))
   } else {
     group_by_length <- length(x = unique(x = seurat_object@meta.data[[group.by]]))
   }
-
+  
   # Check colors use vs. ggplot2 color scale
   if (!is.null(x = colors_use_idents) && isTRUE(x = ggplot_default_colors)) {
     cli_abort(message = "Cannot provide both custom palette to {.code colors_use} and specify {.code ggplot_default_colors = TRUE}.")
@@ -754,22 +755,22 @@ Clustered_DotPlot_Single_Group <- function(
     # set default plot colors
     colors_use_idents <- scCustomize_Palette(num_groups = group_by_length, ggplot_default_colors = ggplot_default_colors, color_seed = color_seed)
   }
-
+  
   # Reduce color length list due to naming requirement
   colors_use_idents <- colors_use_idents[1:group_by_length]
-
+  
   # Modify if class = "colors"
   if (inherits(x = colors_use_idents, what = "colors")) {
     colors_use_idents <- as.vector(x = colors_use_idents)
   }
-
+  
   # Pull Annotation and change colors to ComplexHeatmap compatible format
   Identity <- colnames(x = exp_mat)
-
+  
   identity_colors <- colors_use_idents
   names(x = identity_colors) <- Identity
   identity_colors_list <- list(Identity = identity_colors)
-
+  
   # check grid color
   if (is.null(x = grid_color)) {
     grid_color <- NA
@@ -783,7 +784,7 @@ Clustered_DotPlot_Single_Group <- function(
       cli_abort(message = "Value provided to {.code grid_color} ({.field {grid_color}}) is not valid value for color in R.")
     }
   }
-
+  
   # Create identity annotation
   if (isTRUE(x = show_ident_colors)) {
     if (isTRUE(x = flip)) {
@@ -791,32 +792,34 @@ Clustered_DotPlot_Single_Group <- function(
                                                  col =  identity_colors_list,
                                                  na_col = "grey",
                                                  name = "Identity",
-                                                 show_legend = FALSE
+                                                 show_legend = FALSE,
+                                                 simple_anno_size = simple_anno_size
       )
     } else {
       column_ha <- ComplexHeatmap::HeatmapAnnotation(Identity = Identity,
                                                      col =  identity_colors_list,
                                                      na_col = "grey",
                                                      name = "Identity",
-                                                     show_legend = FALSE
+                                                     show_legend = FALSE, 
+                                                     simple_anno_size = simple_anno_size
       )
     }
   } else {
     column_ha <- NULL
   }
-
-
+  
+  
   # Set middle of color scale if not specified
   if (is.null(x = exp_color_middle)) {
     exp_color_middle <- Middle_Number(min = exp_color_min, max = exp_color_max)
   }
-
+  
   palette_length <- length(x = colors_use_exp)
   palette_middle <- Middle_Number(min = 0, max = palette_length)
-
+  
   # Create palette
   col_fun = colorRamp2(c(exp_color_min, exp_color_middle, exp_color_max), colors_use_exp[c(1,palette_middle, palette_length)])
-
+  
   # Calculate and plot Elbow
   if (isTRUE(x = plot_km_elbow)) {
     # if elbow_kmax not NULL check it is usable
@@ -826,7 +829,7 @@ Clustered_DotPlot_Single_Group <- function(
                            "i" = "Changing to (length(x = features)-1): {.field {elbow_kmax}}.")
       )
     }
-
+    
     # if elbow_kmax is NULL set value based on input feature list
     if (is.null(x = elbow_kmax)) {
       # set to (length(x = features)-1) if less than 21 features OR to 20 if greater than 21 features
@@ -836,10 +839,10 @@ Clustered_DotPlot_Single_Group <- function(
         elbow_kmax <- nrow(x = exp_mat) - 1
       }
     }
-
+    
     km_elbow_plot <- kMeans_Elbow(data = exp_mat, k_max = elbow_kmax)
   }
-
+  
   # prep heatmap
   if (isTRUE(x = flip)) {
     if (isTRUE(x = raster)) {
@@ -874,14 +877,14 @@ Clustered_DotPlot_Single_Group <- function(
       }
     }
   }
-
+  
   # Create legend for point size
   if (!is.null(x = legend_orientation) && legend_orientation == "horizontal") {
     num_row <- 1
   } else {
     num_row <- NULL
   }
-
+  
   if (isFALSE(x = show_ident_legend)) {
     lgd_list = list(
       ComplexHeatmap::Legend(labels = c(10,25,50,75,100), title = "Percent Expressing",
@@ -920,9 +923,9 @@ Clustered_DotPlot_Single_Group <- function(
       )
     )
   }
-
-
-
+  
+  
+  
   # Set x label roration
   if (is.numeric(x = x_lab_rotate)) {
     x_lab_rotate <- x_lab_rotate
@@ -931,7 +934,7 @@ Clustered_DotPlot_Single_Group <- function(
   } else {
     x_lab_rotate <- 0
   }
-
+  
   # Create Plot
   set.seed(seed = seed)
   if (isTRUE(x = raster)) {
@@ -1023,7 +1026,7 @@ Clustered_DotPlot_Single_Group <- function(
                                                   row_names_side = row_names_side)
     }
   }
-
+  
   # Add pt.size legend & return plots
   if (isTRUE(x = plot_km_elbow)) {
     if (!is.null(x = plot_padding)) {
@@ -1031,7 +1034,7 @@ Clustered_DotPlot_Single_Group <- function(
     } else {
       return(list(km_elbow_plot, ComplexHeatmap::draw(cluster_dot_plot, annotation_legend_list = lgd_list)))
     }
-
+    
   }
   if (!is.null(x = plot_padding)) {
     return(ComplexHeatmap::draw(cluster_dot_plot, annotation_legend_list = lgd_list, padding = padding, merge_legend = TRUE, heatmap_legend_side = legend_position))
@@ -1182,29 +1185,29 @@ Clustered_DotPlot_Multi_Group <- function(
       "----------------------------------------"
     ))
   }
-
+  
   # Check Seurat
   Is_Seurat(seurat_object = seurat_object)
-
+  
   # Check split valid
   if (!is.null(x = split.by)) {
     split.by <- Meta_Present(object = seurat_object, meta_col_names = split.by, print_msg = FALSE, omit_warn = FALSE)[[1]]
   }
-
+  
   # Add check for group.by before getting to colors
   if (!is.null(x = group.by) && group.by != "ident") {
     Meta_Present(object = seurat_object, meta_col_names = group.by, print_msg = FALSE)
   }
-
+  
   # set assay (if null set to active assay)
   assay <- assay %||% DefaultAssay(object = seurat_object)
-
+  
   # set padding
   if (!is.null(x = plot_padding)) {
     if (isTRUE(x = plot_padding)) {
       # Default extra padding
-          # 2 bottom: typically mirrors unpadded plot
-          # 15 left: usually enough to make rotated labels fit in plot window
+      # 2 bottom: typically mirrors unpadded plot
+      # 15 left: usually enough to make rotated labels fit in plot window
       padding <- unit(c(2, 15, 0, 0), "mm")
     } else {
       if (length(x = plot_padding) != 4) {
@@ -1216,16 +1219,16 @@ Clustered_DotPlot_Multi_Group <- function(
       padding <- unit(plot_padding, "mm")
     }
   }
-
+  
   # Check expression value type
   accepted_exp_types <- c("scaled", "average")
-
+  
   exp_value_type <- str_to_lower(string = exp_value_type)
-
+  
   if (!exp_value_type %in% accepted_exp_types) {
     cli_abort(message = "{.code exp_value_type}, must be one of {.field {accepted_exp_types}}")
   }
-
+  
   # Ignore exp_min and exp_max colors
   if (exp_value_type == "average") {
     if (exp_color_min != -2 || exp_color_max != 2 || !is.null(x = exp_color_middle)) {
@@ -1234,77 +1237,77 @@ Clustered_DotPlot_Multi_Group <- function(
                            "i" = "{.field {glue_collapse_scCustom(input_string = ignored_params, and = TRUE)}}."))
     }
   }
-
+  
   # Check acceptable fontface
   if (!row_label_fontface %in% c("plain", "bold", "italic", "oblique", "bold.italic")) {
     cli_abort(message = c("{.code row_label_face} {.val {row_label_face}} not recognized.",
                           "i" = "Must be one of {.val plain}, {.val bold}, {.val italic}, {.val olique}, or {.val bold.italic}."))
   }
-
+  
   # Check unique features
   features_unique <- unique(x = features)
-
+  
   if (length(x = features_unique) != length(x = features)) {
     cli_warn("Feature list contains duplicates, making unique.")
   }
-
+  
   # Check features and meta to determine which features present
   all_found_features <- Feature_PreCheck(object = seurat_object, features = features_unique, assay = assay)
-
+  
   # Check exp min/max set correctly
   if (!exp_color_min < exp_color_max) {
     cli_abort(message = c("Expression color min/max values are not compatible.",
                           "i" = "The value for {.code exp_color_min}: {.field {exp_color_min}} must be less than the value for {.code exp_color_max}: {.field {exp_color_max}}.")
     )
   }
-
+  
   # set group.by value
   group.by <- group.by %||% "ident"
-
+  
   # Get data
   exp_mat_df <- suppressMessages(data.frame(AverageExpression(object = seurat_object, features = all_found_features, group.by = c(group.by, split.by), assays = assay, layer = "data")[[assay]]))
-
+  
   # Data is returned in non-log space after averaging, return to log space for plotting
   exp_mat <- data.frame(lapply(exp_mat_df, function(x){
     log1p(x)
   }))
-
+  
   exp_mat <- as.matrix(exp_mat)
   rownames(exp_mat) <- rownames(exp_mat_df)
-
+  
   # scale data
   if (exp_value_type == "scaled") {
     exp_mat <- FastRowScale(mat = exp_mat)
     rownames(exp_mat) <- rownames(exp_mat_df)
   }
-
+  
   # check underscore present in split.by and replace if so
   split_by_names <- Fetch_Meta(object = seurat_object) %>%
     select(any_of(split.by)) %>%
     pull()
-
+  
   under_score <- grep(pattern = "_", x = split_by_names, value = TRUE)
-
+  
   if (length(x = under_score) > 0) {
     split_by_names <- gsub(pattern = "_", replacement = ".", x = split_by_names)
     seurat_object[[split.by]] <- split_by_names
   }
-
+  
   percent_mat <- Percent_Expressing(seurat_object = seurat_object, features = all_found_features, split_by = split.by, group_by = group.by, assay = assay)
-
+  
   # reorder columns to match
   idx <- match(colnames(x = exp_mat), colnames(x = percent_mat))
   idx
-
+  
   percent_mat <- percent_mat[, idx]
   percent_mat <- as.matrix(percent_mat)
-
+  
   # print quantiles
   if (isTRUE(x = print_exp_quantiles)) {
     cli_inform(message = "Quantiles of gene expression data are:")
     print(quantile(exp_mat, c(0.1, 0.5, 0.9, 0.99)))
   }
-
+  
   # check grid color
   if (is.null(x = grid_color)) {
     grid_color <- NA
@@ -1318,35 +1321,35 @@ Clustered_DotPlot_Multi_Group <- function(
       cli_abort(message = "Value provided to {.code grid_color} ({.field {grid_color}}) is not valid value for color in R.")
     }
   }
-
+  
   # Set middle of color scale if not specified
   if (exp_value_type == "scaled") {
     if (is.null(x = exp_color_middle)) {
       exp_color_middle <- Middle_Number(min = exp_color_min, max = exp_color_max)
     }
-
+    
     palette_length <- length(x = colors_use_exp)
     palette_middle <- Middle_Number(min = 0, max = palette_length)
-
+    
     # Create palette
     col_fun <-  colorRamp2(c(exp_color_min, exp_color_middle, exp_color_max), colors_use_exp[c(1,palette_middle, palette_length)])
   }
-
+  
   if (exp_value_type == "average") {
     if (is.null(x = exp_color_middle)) {
       avg_color_max <- max(apply(exp_mat, 2, function(x) max(x, na.rm = TRUE)))
       avg_color_min <- 0
       avg_color_middle <- Middle_Number(min = 0, max = avg_color_max)
-
+      
       palette_length <- length(x = colors_use_exp)
       palette_middle <- Middle_Number(min = 0, max = palette_length)
-
+      
       # Create palette
       col_fun <- colorRamp2(c(avg_color_min, avg_color_middle, avg_color_max), colors_use_exp[c(1,palette_middle, palette_length)])
-
+      
     }
   }
-
+  
   # Calculate and plot Elbow
   if (isTRUE(x = plot_km_elbow)) {
     # if elbow_kmax not NULL check it is usable
@@ -1356,7 +1359,7 @@ Clustered_DotPlot_Multi_Group <- function(
                            "i" = "Changing to (length(x = features)-1): {.field {elbow_kmax}}.")
       )
     }
-
+    
     # if elbow_kmax is NULL set value based on input feature list
     if (is.null(x = elbow_kmax)) {
       # set to (length(x = features)-1) if less than 21 features OR to 20 if greater than 21 features
@@ -1366,10 +1369,10 @@ Clustered_DotPlot_Multi_Group <- function(
         elbow_kmax <- nrow(x = exp_mat) - 1
       }
     }
-
+    
     km_elbow_plot <- kMeans_Elbow(data = exp_mat, k_max = elbow_kmax)
   }
-
+  
   # prep heatmap
   if (isTRUE(x = flip)) {
     if (isTRUE(x = raster)) {
@@ -1404,14 +1407,14 @@ Clustered_DotPlot_Multi_Group <- function(
       }
     }
   }
-
+  
   # Create legend for point size
   if (!is.null(x = legend_orientation) && legend_orientation == "horizontal") {
     num_row <- 1
   } else {
     num_row <- NULL
   }
-
+  
   lgd_list = list(
     ComplexHeatmap::Legend(labels = c(10,25,50,75,100), title = "Percent Expressing",
                            graphics = list(
@@ -1429,7 +1432,7 @@ Clustered_DotPlot_Multi_Group <- function(
                            title_gp = gpar(fontsize = legend_title_size, fontface = "bold"), nrow = num_row
     )
   )
-
+  
   # Set x label roration
   if (is.numeric(x = x_lab_rotate)) {
     x_lab_rotate <- x_lab_rotate
@@ -1438,7 +1441,7 @@ Clustered_DotPlot_Multi_Group <- function(
   } else {
     x_lab_rotate <- 0
   }
-
+  
   # Create Plot
   set.seed(seed = seed)
   if (isTRUE(x = raster)) {
@@ -1526,7 +1529,7 @@ Clustered_DotPlot_Multi_Group <- function(
                                                   row_names_side = row_names_side)
     }
   }
-
+  
   # Add pt.size legend & return plots
   if (isTRUE(x = plot_km_elbow)) {
     if (!is.null(x = plot_padding)) {
@@ -1534,7 +1537,7 @@ Clustered_DotPlot_Multi_Group <- function(
     } else {
       return(list(km_elbow_plot, ComplexHeatmap::draw(cluster_dot_plot, annotation_legend_list = lgd_list, merge_legend = TRUE)))
     }
-
+    
   }
   if (!is.null(x = plot_padding)) {
     return(ComplexHeatmap::draw(cluster_dot_plot, annotation_legend_list = lgd_list, merge_legend = TRUE, padding = padding, heatmap_legend_side = legend_position))
@@ -1587,36 +1590,36 @@ Plot_Pie_Proportions <- function(
 ) {
   # Check Seurat
   Is_Seurat(seurat_object = seurat_object)
-
+  
   # Check on meta data column
   if (group_by_var != "ident") {
     # Check meta
     group_by_var <- Meta_Present(object = seurat_object, meta_col_names = group_by_var, print_msg = FALSE, omit_warn = FALSE)[[1]]
-
+    
     Idents(seurat_object) <- group_by_var
   }
-
+  
   # check split
   if (!is.null(x = split.by)) {
     split.by <- Meta_Present(object = seurat_object, meta_col_names = split.by, print_msg = FALSE, omit_warn = FALSE)[[1]]
   }
-
+  
   if (is.null(x = split.by)) {
     plot_df <- table(seurat_object@active.ident) %>%
       data.frame() %>%
       rename(Cluster = all_of("Var1"), Number = all_of("Freq")) %>%
       arrange(desc(.data[["Number"]]))
-
+    
     # Check colors use vs. ggplot2 color scale
     if (!is.null(x = colors_use) && isTRUE(x = ggplot_default_colors)) {
       cli_abort(message = "Cannot provide both custom palette to {.code colors_use} and specify {.code ggplot_default_colors = TRUE}.")
     }
-
+    
     # set default plot colors
     if (is.null(x = colors_use)) {
       colors_use <- scCustomize_Palette(num_groups = nrow(x = plot_df), ggplot_default_colors = ggplot_default_colors, color_seed = color_seed)
     }
-
+    
     # make plots
     plot <-  ggplot(plot_df, aes(x="", y=.data[["Number"]], fill=.data[["Cluster"]])) +
       geom_bar(stat="identity", width=1, color="white") +
@@ -1629,7 +1632,7 @@ Plot_Pie_Proportions <- function(
             axis.text = element_blank(),
             axis.title = element_blank(),
             axis.ticks = element_blank())
-
+    
     return(plot)
   } else {
     plot_df <- table(seurat_object@active.ident, seurat_object@meta.data[, split.by])
@@ -1637,19 +1640,19 @@ Plot_Pie_Proportions <- function(
       rename(Cluster = all_of("Var1"), split.by = all_of("Var2"), cell_number = all_of("Freq"))
     plot_df <- plot_df %>%
       pivot_wider(names_from = split.by, values_from = all_of("cell_number"))
-
+    
     samples <- colnames(plot_df)[-1]
-
+    
     # Check colors use vs. ggplot2 color scale
     if (!is.null(x = colors_use) && isTRUE(x = ggplot_default_colors)) {
       cli_abort(message = "Cannot provide both custom palette to {.code colors_use} and specify {.code ggplot_default_colors = TRUE}.")
     }
-
+    
     # set default plot colors
     if (is.null(x = colors_use)) {
       colors_use <- scCustomize_Palette(num_groups = nrow(x = plot_df), ggplot_default_colors = ggplot_default_colors, color_seed = color_seed)
     }
-
+    
     plots <- lapply(1:length(samples), function(x){
       plot <- ggplot(plot_df, aes(x="", y=.data[[samples[x]]], fill=.data[["Cluster"]])) +
         geom_bar(stat="identity", width=1, color="white") +
@@ -1663,10 +1666,10 @@ Plot_Pie_Proportions <- function(
               axis.title = element_blank(),
               axis.ticks = element_blank())
     })
-
+    
     plots <- wrap_plots(plots, guides = "collect", ncol = num_columns)
     plots <- plots + plot_annotation(title = "Proportion of Cells", theme = theme(plot.title = element_text(hjust = 0.5, face = "bold", size = 18)))
-
+    
     return(plots)
   }
 }
@@ -1717,32 +1720,32 @@ Plot_Bar_Proportions <- function(
 ) {
   # Check Seurat
   Is_Seurat(seurat_object = seurat_object)
-
+  
   # Check on meta data column
   if (group_by_var != "ident") {
     # Check meta
     group_by_var <- Meta_Present(object = seurat_object, meta_col_names = group_by_var, print_msg = FALSE, omit_warn = FALSE)[[1]]
-
+    
     Idents(object = seurat_object) <- group_by_var
   }
-
+  
   group_by_length <- length(x = unique(x = seurat_object@active.ident))
-
+  
   # Check colors use vs. ggplot2 color scale
   if (!is.null(x = colors_use) && isTRUE(x = ggplot_default_colors)) {
     cli_abort(message = "Cannot provide both custom palette to {.code colors_use} and specify {.code ggplot_default_colors = TRUE}.")
   }
-
+  
   # set default plot colors
   if (is.null(x = colors_use)) {
     colors_use <- scCustomize_Palette(num_groups = group_by_length, ggplot_default_colors = ggplot_default_colors, color_seed = color_seed)
   }
-
+  
   # check split
   if (!is.null(x = split.by)) {
     split.by <- Meta_Present(object = seurat_object, meta_col_names = split.by, print_msg = FALSE, omit_warn = FALSE)[[1]]
   }
-
+  
   if (plot_scale == "count") {
     if (!is.null(x = split.by)) {
       plot_df <- table(seurat_object@active.ident, seurat_object@meta.data[, split.by])
@@ -1755,7 +1758,7 @@ Plot_Bar_Proportions <- function(
       plot_df$split.by <- "Total"
     }
   }
-
+  
   if (plot_scale == "percent") {
     if (!is.null(x = split.by)) {
       plot_df <- prop.table(x = table(seurat_object@active.ident, seurat_object@meta.data[, split.by]), margin = 2) * 100
@@ -1768,7 +1771,7 @@ Plot_Bar_Proportions <- function(
       plot_df$split.by <- "Total"
     }
   }
-
+  
   # make plots
   plot <-  ggplot(plot_df, aes(x=.data[["split.by"]], y=.data[["value"]], fill=.data[["Cluster"]])) +
     geom_bar(stat="identity", width=0.9, color="white",) +
@@ -1778,15 +1781,15 @@ Plot_Bar_Proportions <- function(
     theme(plot.title = element_text(hjust = 0.5)) +
     scale_y_continuous(expand = c(0, 0)) +
     xlab("")
-
+  
   if (plot_scale == "percent") {
     plot <- plot + ylab("Percent")
   }
-
+  
   if (plot_scale == "count") {
     plot <- plot + ylab("Number of Cells")
   }
-
+  
   # return plot
   return(plot)
 }
@@ -1825,7 +1828,7 @@ AutoPointSize_scCustom <- function(data, raster = NULL) {
     ))
   }
   if (inherits(what = "Seurat", x = data)) {
-
+    
     return(ifelse(
       test = isTRUE(x = raster),
       yes = 1,
@@ -1861,7 +1864,7 @@ AutoPointSize_scCustom <- function(data, raster = NULL) {
 
 # extract the max value of the y axis
 Extract_Max <- function(
-  p
+    p
 ) {
   ymax <- max(ggplot_build(p)$layout$panel_scales_y[[1]]$range$range)
   return(ceiling(ymax))
@@ -1884,13 +1887,13 @@ Extract_Max <- function(
 #'
 
 Test_Integer <- function(
-  x
-  ) {
+    x
+) {
   test <- all.equal(x, as.integer(x), check.attributes = FALSE)
   if (isTRUE(x = test)) {
     return(TRUE)
   } else {
-      return(FALSE)
+    return(FALSE)
   }
 }
 
@@ -1959,15 +1962,15 @@ create_factor_hclust_rect <- function(
   hc_rect <-  cutree(tree, k = num_rect)
   clustab <-  table(hc_rect)[unique(hc_rect[tree$order])]
   cu <- c(0, cumsum(clustab))
-
+  
   rect_df <- data.frame(cbind(cu[-length(cu)], cu[-1]))
   rownames(rect_df) <- 1:num_rect
   rect_df <- rect_df + 0.5
   rect_df2 <- num_factors - rect_df + 1
-
+  
   rect_list <- list("x_axis" = rect_df,
                     "y_axis" = rect_df2)
-
+  
   return(rect_list)
 }
 
@@ -2075,8 +2078,8 @@ Blank_Theme <- function(...) {
 #'
 
 Move_Legend <- function(
-  position = "right",
-  ...
+    position = "right",
+    ...
 ) {
   move_legend_theme <- theme(
     legend.position = position,
@@ -2126,29 +2129,29 @@ Move_Legend <- function(
 #'
 
 theme_ggprism_mod <- function(
-  palette = "black_and_white",
-  base_size = 14,
-  base_family = "sans",
-  base_fontface = "bold",
-  base_line_size = base_size / 20,
-  base_rect_size = base_size / 20,
-  axis_text_angle = 0,
-  border = FALSE
+    palette = "black_and_white",
+    base_size = 14,
+    base_family = "sans",
+    base_fontface = "bold",
+    base_line_size = base_size / 20,
+    base_rect_size = base_size / 20,
+    axis_text_angle = 0,
+    border = FALSE
 ) {
   mod_theme <- theme_prism(palette = palette,
-              base_size = base_size,
-              base_family = base_family,
-              base_fontface = base_fontface,
-              base_line_size = base_line_size,
-              base_rect_size = base_rect_size,
-              axis_text_angle = axis_text_angle,
-              border = border) %+replace%
+                           base_size = base_size,
+                           base_family = base_family,
+                           base_fontface = base_fontface,
+                           base_line_size = base_line_size,
+                           base_rect_size = base_rect_size,
+                           axis_text_angle = axis_text_angle,
+                           border = border) %+replace%
     theme(legend.title = element_text(hjust = 0),
           axis.text = element_text(size = rel(0.95), face = "plain")
     )
-
+  
   mod_theme[c("legend.text.align", "legend.title.align")] <- NULL
-
+  
   return(mod_theme)
 }
 
@@ -2189,5 +2192,3 @@ No_Right <- function() {
   )
   return(no.right)
 }
-
-
